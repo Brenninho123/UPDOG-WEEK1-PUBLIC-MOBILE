@@ -1,0 +1,67 @@
+name: Android Build
+on:
+  # Permite rodar manualmente na aba Actions
+  workflow_dispatch:
+  # Roda automaticamente ao dar push na main
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.2.5
+
+      - name: Install Haxelibs
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install lime 8.1.3
+          haxelib install openfl
+          haxelib install flixel
+          haxelib install flixel-addons
+          haxelib install flixel-ui
+          haxelib install flixel-tools
+          haxelib install flxanimate
+          haxelib install hscript
+          haxelib install hscript-iris
+          haxelib install hxvlc
+          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit
+          haxelib git extension-androidtools https://github.com/MAJigsaw77/extension-androidtools
+          haxelib git SDEV-android-files https://github.com/SDEV-Team/SDEV-android-files
+          haxelib run lime setup
+
+      - name: Configure Android SDK/NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r21e # Versão estável para Haxe/Lime
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Configure Lime for Android
+        run: |
+          haxelib run lime setup android --no-install
+          # Configura os caminhos para o runner do GitHub encontrar o SDK/NDK
+          echo "ANDROID_SDK=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+
+      - name: Build Android
+        run: |
+          # Compila o jogo em modo Release
+          haxelib run lime build android -final
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VsImpostor-Android-Build
+          path: export/release/android/bin/app/build/outputs/apk/release/*.apk
